@@ -361,4 +361,4 @@ async def root():
 if __name__ == "__main__":
     print("Starting Financial Fraud Detective server...")
     print("Docs available at: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run(app, host="0.0.0.0", port=7860) 
