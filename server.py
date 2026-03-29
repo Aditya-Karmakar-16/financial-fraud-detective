@@ -1,3 +1,10 @@
+
+from fastapi.responses import FileResponse
+
+@app.get("/")
+async def root():
+    return FileResponse("index.html")
+
 """
 server.py — Financial Fraud Detective OpenEnv
 =============================================
