@@ -275,7 +275,7 @@ def state():
         "cumulative_score": round(episode.cumulative_score, 3),
         "done": episode.done,
         "actions_taken": episode.actions_taken,
-        "current_transaction": current,
+        "current_observation": current,
     }
 
 
@@ -361,4 +361,4 @@ async def root():
 if __name__ == "__main__":
     print("Starting Financial Fraud Detective server...")
     print("Docs available at: http://localhost:8000/docs")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=7860)
