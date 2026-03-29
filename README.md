@@ -1,3 +1,12 @@
+---
+title: Financial Fraud Detective
+emoji: 🕵️
+colorFrom: red
+colorTo: yellow
+sdk: docker
+pinned: false
+---
+
 # 🕵️ Financial Fraud Detective — OpenEnv
 
 > **Meta PyTorch OpenEnv x Scaler Hackathon**  
