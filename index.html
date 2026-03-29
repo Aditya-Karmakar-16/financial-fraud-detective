@@ -806,17 +806,18 @@ async function getState() {
   try {
     const r = await fetch(BASE + '/state');
     const d = await r.json();
-    currentStep = d.step_number || currentStep;
+
+    const obs = d.current_observation || d.current_transaction;
+    currentStep = d.current_step || d.step_number || currentStep;
     updateProgress();
     document.getElementById('step-val').textContent = currentStep + ' / ' + totalSteps;
     document.getElementById('score-val').textContent = (d.cumulative_score||0).toFixed(2);
 
-    if (d.done || !d.current_observation) {
+    if (d.done || !obs) {
       showComplete(d.cumulative_score || 0);
       return;
     }
 
-    const obs = d.current_observation;
     currentTxnId = obs.transaction_id;
     renderTxn(obs);
   } catch(e) {
