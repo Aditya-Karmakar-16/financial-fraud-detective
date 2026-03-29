@@ -1,10 +1,3 @@
-
-from fastapi.responses import FileResponse
-
-@app.get("/")
-async def root():
-    return FileResponse("index.html")
-
 """
 server.py — Financial Fraud Detective OpenEnv
 =============================================
@@ -359,6 +352,12 @@ def step(action: ActionModel):
 
 
 # ─── Run server ────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    from fastapi.responses import FileResponse
+    return FileResponse("index.html")
+
 if __name__ == "__main__":
     print("Starting Financial Fraud Detective server...")
     print("Docs available at: http://localhost:8000/docs")
