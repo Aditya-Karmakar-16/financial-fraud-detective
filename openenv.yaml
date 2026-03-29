@@ -1,0 +1,113 @@
+name: financial-fraud-detective
+version: 1.0.0
+description: >
+  A multi-currency financial fraud detection environment where an AI agent acts
+  as a fraud analyst reviewing bank transactions across India, UK, UAE, Singapore,
+  and Europe. The agent must flag, freeze, escalate, or ignore each transaction
+  to maximise cumulative reward.
+
+author: adityakarmakar
+license: MIT
+
+tasks:
+  - id: easy
+    description: "Single fraud case — USD ATM withdrawal on INR account in Nigeria at 3am"
+    transactions: 5
+    perfect_score: 1.2
+    difficulty: easy
+
+  - id: medium
+    description: "Coordinated card testing attack — INR + GBP + AED accounts, same fraud IP"
+    transactions: 12
+    perfect_score: 3.6
+    difficulty: medium
+
+  - id: hard
+    description: "Money laundering chain — INR → USD → AED → EUR across 5 countries"
+    transactions: 20
+    perfect_score: 6.4
+    difficulty: hard
+
+action_space:
+  type: discrete
+  actions:
+    - name: flag
+      description: "Mark transaction as suspicious / likely fraud"
+    - name: freeze
+      description: "Freeze account under active coordinated attack"
+    - name: escalate
+      description: "Escalate as part of a money-laundering chain"
+    - name: ignore
+      description: "Transaction is legitimate — take no action"
+
+observation_space:
+  type: dict
+  fields:
+    - name: transaction_id
+      type: string
+      description: "Unique transaction identifier"
+    - name: amount
+      type: float
+      description: "Transaction amount in local currency"
+    - name: currency
+      type: string
+      description: "ISO 4217 currency code (INR, USD, GBP, AED, EUR)"
+    - name: account_id
+      type: string
+      description: "Source account identifier"
+    - name: merchant
+      type: string
+      description: "Merchant or counterparty name"
+    - name: location
+      type: string
+      description: "Transaction location (city, country)"
+    - name: timestamp
+      type: string
+      description: "ISO 8601 transaction timestamp"
+    - name: risk_signals
+      type: list
+      description: "List of pre-computed risk flags (e.g. unusual_location, off_hours)"
+
+reward_range:
+  min: -1.0
+  max: 1.0
+
+reward_function:
+  - trigger: "Correctly flagged fraudulent transaction"
+    score: +0.4
+  - trigger: "Correctly escalated money-laundering transaction"
+    score: +0.5
+  - trigger: "Correctly ignored legitimate transaction"
+    score: +0.2
+  - trigger: "Correctly froze account under active attack"
+    score: +0.1
+  - trigger: "False positive — flagged/escalated legitimate transaction"
+    score: -0.3
+  - trigger: "False negative — ignored fraudulent transaction"
+    score: -0.5
+  - trigger: "Missed laundering — ignored money-laundering transaction"
+    score: -0.4
+  - trigger: "Wrong action type (flag vs escalate)"
+    score: -0.2
+  - trigger: "Repeated action on same transaction"
+    score: -0.1
+
+endpoints:
+  health:  GET  /health
+  tasks:   GET  /tasks
+  reset:   POST /reset
+  state:   GET  /state
+  step:    POST /step
+
+environment:
+  runtime: python3.11
+  framework: fastapi
+  port: 7860
+  docker: true
+
+tags:
+  - openenv
+  - finance
+  - fraud-detection
+  - multi-currency
+  - reinforcement-learning
