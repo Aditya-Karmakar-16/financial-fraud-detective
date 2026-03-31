@@ -651,9 +651,6 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.30.6" },
 ]
 
-[package.metadata.requires-dev]
-dev = []
-
 [[package]]
 name = "fsspec"
 version = "2026.3.0"
