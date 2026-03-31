@@ -237,14 +237,15 @@ def list_tasks():
 
 
 @app.post("/reset", response_model=ObservationModel)
-def reset(request: ResetRequest):
+def reset(request: ResetRequest = None):
     """
     Start a new episode.
     Returns the first transaction for the agent to evaluate.
     Call this before starting any episode.
     """
+    task = request.task_id if request else "easy"
     try:
-        episode.reset(request.task_id)
+        episode.reset(task)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
