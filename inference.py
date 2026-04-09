@@ -21,14 +21,15 @@ from openai import OpenAI
 # ── Configuration ──────────────────────────────────────────────────────────────
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME",   "gpt-4o-mini")
-HF_TOKEN     = os.getenv("HF_TOKEN")       # NO default — required by hackathon spec
+# Support both HF_TOKEN and API_KEY — validator injects API_KEY via LiteLLM proxy
+HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 SERVER_URL   = os.getenv("SERVER_URL",   "http://localhost:7860")
 
 TASKS      = ["easy", "medium", "hard"]
 MAX_STEPS  = 25
 SLEEP_SECS = 0.3
 BENCHMARK  = "financial-fraud-detective"
-SUCCESS_THRESHOLD = 0.5  # fraction of perfect score to count as success
+SUCCESS_THRESHOLD = 0.5
 
 # NOTE: OpenAI client created lazily inside call_llm() — never at module level.
 # openai>=1.0 raises AuthenticationError immediately on empty api_key.
@@ -111,12 +112,12 @@ def run_episode(task_id: str) -> float:
 
     server_post("/reset", {"task_id": task_id})
 
-    conversation    = [{"role": "system", "content": SYSTEM_PROMPT}]
-    seen_txns: set  = set()
-    step            = 0
-    cumulative      = 0.0
+    conversation         = [{"role": "system", "content": SYSTEM_PROMPT}]
+    seen_txns: set       = set()
+    step                 = 0
+    cumulative           = 0.0
     rewards: List[float] = []
-    error_msg       = None
+    error_msg            = None
 
     try:
         while step < MAX_STEPS:
@@ -138,7 +139,7 @@ def run_episode(task_id: str) -> float:
 
             conversation.append({"role": "user", "content": observation_to_text(obs)})
             try:
-                action = call_llm(conversation)
+                action    = call_llm(conversation)
                 error_msg = None
             except Exception as e:
                 action    = {"action_type": "ignore", "reasoning": f"fallback: {e}"}
@@ -172,17 +173,15 @@ def run_episode(task_id: str) -> float:
     except Exception as e:
         error_msg = str(e)
 
-    # Normalise cumulative score to [0, 1]
-    perfect   = PERFECT.get(task_id, 1.0)
-    norm      = min(max(cumulative / perfect, 0.0), 1.0) if perfect else 0.0
-    success   = norm >= SUCCESS_THRESHOLD
+    perfect  = PERFECT.get(task_id, 1.0)
+    norm     = min(max(cumulative / perfect, 0.0), 1.0) if perfect else 0.0
+    success  = norm >= SUCCESS_THRESHOLD
 
     log_end(success=success, steps=step, score=norm, rewards=rewards)
     return cumulative
 
 
 def main():
-    # Health check
     try:
         server_get("/health")
     except Exception as e:
