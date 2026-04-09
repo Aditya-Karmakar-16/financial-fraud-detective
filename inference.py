@@ -21,8 +21,8 @@ from openai import OpenAI
 # ── Configuration ──────────────────────────────────────────────────────────────
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME",   "gpt-4o-mini")
-# Support both HF_TOKEN and API_KEY — validator injects API_KEY via LiteLLM proxy
-HF_TOKEN     = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+# Validator injects API_KEY — support both API_KEY and HF_TOKEN
+API_KEY      = os.getenv("API_KEY") or os.getenv("HF_TOKEN") or "sk-placeholder"
 SERVER_URL   = os.getenv("SERVER_URL",   "http://localhost:7860")
 
 TASKS      = ["easy", "medium", "hard"]
@@ -31,8 +31,8 @@ SLEEP_SECS = 0.3
 BENCHMARK  = "financial-fraud-detective"
 SUCCESS_THRESHOLD = 0.5
 
-# NOTE: OpenAI client created lazily inside call_llm() — never at module level.
-# openai>=1.0 raises AuthenticationError immediately on empty api_key.
+# ── OpenAI client — uses API_BASE_URL + API_KEY exactly as validator injects ──
+client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 # ── System prompt ──────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are an expert financial fraud analyst reviewing bank transactions.
@@ -56,14 +56,13 @@ Reward signals:
   +0.1  correct freeze     -0.2  wrong action type
 """
 
-# ── Structured stdout loggers (exact format required) ─────────────────────────
+# ── Structured stdout loggers ─────────────────────────────────────────────────
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
-    done_val  = str(done).lower()
-    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}", flush=True)
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error_val}", flush=True)
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
@@ -87,9 +86,8 @@ def observation_to_text(obs: dict) -> str:
             lines.append(f"  {k}: {v}")
     return "\n".join(lines)
 
-# ── LLM call — lazy client init ────────────────────────────────────────────────
+# ── LLM call ──────────────────────────────────────────────────────────────────
 def call_llm(conversation: list) -> dict:
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=conversation,
@@ -173,9 +171,9 @@ def run_episode(task_id: str) -> float:
     except Exception as e:
         error_msg = str(e)
 
-    perfect  = PERFECT.get(task_id, 1.0)
-    norm     = min(max(cumulative / perfect, 0.0), 1.0) if perfect else 0.0
-    success  = norm >= SUCCESS_THRESHOLD
+    perfect = PERFECT.get(task_id, 1.0)
+    norm    = min(max(cumulative / perfect, 0.0), 1.0) if perfect else 0.0
+    success = norm >= SUCCESS_THRESHOLD
 
     log_end(success=success, steps=step, score=norm, rewards=rewards)
     return cumulative
