@@ -18,11 +18,11 @@ import requests
 # ── Configuration ──────────────────────────────────────────────────────────────
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME",   "gpt-4o-mini")
-HF_TOKEN     = os.getenv("HF_TOKEN",     "").strip()
+HF_TOKEN     = os.getenv("HF_TOKEN")       # NO default — required by hackathon spec
 SERVER_URL   = os.getenv("SERVER_URL",   "http://localhost:7860")
 
-TASKS     = ["easy", "medium", "hard"]
-MAX_STEPS = 25
+TASKS      = ["easy", "medium", "hard"]
+MAX_STEPS  = 25
 SLEEP_SECS = 0.3
 
 # NOTE: OpenAI client is intentionally NOT created at module level.
@@ -89,10 +89,9 @@ def call_llm(conversation: list) -> dict:
 
 # ── Episode runner ─────────────────────────────────────────────────────────────
 def run_episode(task_id: str) -> float:
-    # Required structured log: [START]
     print(f"[START] task={task_id}", flush=True)
 
-    reset_resp = server_post("/reset", {"task_id": task_id})
+    server_post("/reset", {"task_id": task_id})
 
     conversation = [{"role": "system", "content": SYSTEM_PROMPT}]
     seen_txns: set = set()
@@ -127,9 +126,9 @@ def run_episode(task_id: str) -> float:
         conversation.append({"role": "assistant", "content": json.dumps(action)})
 
         step_resp = server_post("/step", {
-            "action_type": action_type,
+            "action_type":    action_type,
             "transaction_id": txn_id,
-            "reasoning": reasoning,
+            "reasoning":      reasoning,
         })
 
         reward           = step_resp if "score" in step_resp else step_resp.get("reward", step_resp)
@@ -137,7 +136,6 @@ def run_episode(task_id: str) -> float:
         cumulative_score = reward.get("cumulative_score", cumulative_score)
         done             = reward.get("done", False)
 
-        # Required structured log: [STEP]
         print(f"[STEP] step={step + 1} reward={round(score, 3)} cumulative={round(cumulative_score, 3)}", flush=True)
 
         step += 1
@@ -146,13 +144,11 @@ def run_episode(task_id: str) -> float:
         if done:
             break
 
-    # Required structured log: [END]
     print(f"[END] task={task_id} score={round(cumulative_score, 3)} steps={step}", flush=True)
     return cumulative_score
 
 
 def main():
-    # Health check
     try:
         server_get("/health")
     except Exception as e:
@@ -162,23 +158,19 @@ def main():
     tasks_resp = server_get("/tasks")
     available  = [t["task_id"] for t in tasks_resp.get("tasks", [])]
 
-    start_time = time.time()
     results: dict = {}
-
     for task_id in TASKS:
         if task_id not in available:
             continue
         results[task_id] = run_episode(task_id)
 
-    elapsed = time.time() - start_time
     perfect = {"easy": 1.2, "medium": 3.6, "hard": 6.4}
-
     for task_id, score in results.items():
         perf = perfect.get(task_id, 1.0)
         pct  = round((score / perf * 100) if perf else 0, 1)
         print(f"[STEP] summary task={task_id} score={round(score,3)} perfect={perf} pct={pct}", flush=True)
 
-    print(f"[END] phase=inference elapsed={round(elapsed,1)}s within_budget={elapsed <= 1200}", flush=True)
+    print(f"[END] phase=inference", flush=True)
 
 
 if __name__ == "__main__":
